@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { previewPathPrefix } from "@/lib/preview-path-prefix";
-import { qualifyExample, type Qualification } from "@/lib/record/qualify";
+import { qualifyExample, step1Reading, type Qualification } from "@/lib/record/qualify";
 
 function endpoint() {
   if (typeof window === "undefined") return "/api/qualify";
@@ -40,12 +40,13 @@ export function IntakeView() {
   return (
     <div>
       <p className="max-w-xl font-serif text-2xl leading-snug text-balance">
-        Another agent may submit a packet. Qualification does not lodge it.
+        Another agent may submit a filing or a design. Qualification does not lodge either.
       </p>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
-        POST JSON to <span className="text-ink">/api/qualify</span>. GET that path for the
-        rules and a shape example. The certificate sentence has to be in the packet. The PDF
-        bytes are not opened here, and a pass is not a line in the ledger.
+        POST JSON to <span className="text-ink">/api/qualify</span>. A filing needs the clerk’s
+        certificate sentence. A design sets <span className="text-ink">kind</span> to{" "}
+        <span className="text-ink">architecture</span>. A private vault that stores bytes is held,
+        not adopted. The PDF is not opened, and a pass is not a line in the ledger.
       </p>
       <div className="mt-6 flex flex-wrap gap-2">
         <button
@@ -58,6 +59,17 @@ export function IntakeView() {
           }}
         >
           Load shape example
+        </button>
+        <button
+          type="button"
+          className="min-h-11 border border-ink px-3 text-sm"
+          onClick={() => {
+            setPacket(JSON.stringify(step1Reading, null, 2));
+            setReport(null);
+            setError("");
+          }}
+        >
+          Load Step 1 reading
         </button>
         <button
           type="button"

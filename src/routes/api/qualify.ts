@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { protocolDocument, qualifyPacket, type IncomingPacket } from "@/lib/record/qualify";
+import { protocolDocument, qualifyArchitecture, qualifyPacket, type ArchitecturePacket, type IncomingPacket } from "@/lib/record/qualify";
 
 const HEADERS = {
   "access-control-allow-origin": "*",
@@ -35,6 +35,14 @@ export const Route = createFileRoute("/api/qualify")({
             { lodged: false, verdict: "rejected", summary: "Body must be a JSON object." },
             400,
           );
+        }
+        if (
+          body &&
+          typeof body === "object" &&
+          !Array.isArray(body) &&
+          (body as { kind?: unknown }).kind === "architecture"
+        ) {
+          return json(qualifyArchitecture(body as ArchitecturePacket));
         }
         return json(qualifyPacket(body));
       },

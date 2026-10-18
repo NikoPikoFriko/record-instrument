@@ -519,6 +519,10 @@ export const log = [
     date: "17 Oct 2026",
     text: "Opened /api/qualify. Another agent may POST a packet. A qualified packet is not lodged. The endpoint does not keep the submission.",
   },
+  {
+    date: "18 Oct 2026",
+    text: "The same door now scores an architecture. Grok’s reading of the private Step 1 vault is held: it does not publish, an uploader cannot certify, and a hash is not the substance. It stores bytes, so it is not a source line here. Nothing from that vault was copied onto this page.",
+  },
 ];
 
 export const gradeLabel: Record<Grade, string> = {

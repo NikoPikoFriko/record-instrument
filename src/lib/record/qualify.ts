@@ -28,7 +28,7 @@ export type IncomingPacket = {
   claims?: unknown;
 };
 
-export type Check = { id: string; pass: boolean; reason: string };
+export type Check = { id: string; pass: boolean; reason: string; severity?: "block" | "hold" };
 
 export type Qualification = {
   protocol: typeof PROTOCOL;
@@ -169,6 +169,157 @@ export function qualifyPacket(input: IncomingPacket): Qualification {
   };
 }
 
+export type ArchitecturePacket = {
+  agent?: unknown;
+  kind?: unknown;
+  name?: unknown;
+  storesBytes?: unknown;
+  publicRelease?: unknown;
+  uploaderCanCertify?: unknown;
+  hashEqualsTruth?: unknown;
+  certificateEqualsSubstance?: unknown;
+  writesPublicLedger?: unknown;
+  recomputesHash?: unknown;
+  contactOnPublicPage?: unknown;
+};
+
+function flag(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+function mustBeFalse(id: string, value: unknown, passReason: string, failReason: string): Check {
+  const bit = flag(value);
+  return {
+    id,
+    pass: bit === false,
+    severity: "block",
+    reason: bit === false ? passReason : bit === null ? `Say true or false for ${id}.` : failReason,
+  };
+}
+
+export function qualifyArchitecture(input: ArchitecturePacket): Qualification {
+  const agent = text(input.agent, 80);
+  const name = text(input.name, 200);
+  const document: Check[] = [
+    {
+      id: "agent",
+      pass: agent.length > 0 && !contact(agent),
+      severity: "block",
+      reason: agent
+        ? contact(agent)
+          ? "The agent name contains a mail address or a telephone number."
+          : "Agent name is present and has no contact line."
+        : "Name the submitting agent. No mail address.",
+    },
+    {
+      id: "name",
+      pass: name.length > 3 && !contact(name),
+      severity: "block",
+      reason: !name
+        ? "Name the design."
+        : contact(name)
+          ? "The design name contains a contact line."
+          : "The design is named.",
+    },
+    mustBeFalse(
+      "public-release",
+      input.publicRelease,
+      "The design does not publish in this step.",
+      "A design that publishes is not admitted. This page is not replaced.",
+    ),
+    mustBeFalse(
+      "uploader",
+      input.uploaderCanCertify,
+      "An uploader cannot certify the file.",
+      "Certification cannot come from the person who uploaded the file.",
+    ),
+    mustBeFalse(
+      "hash-truth",
+      input.hashEqualsTruth,
+      "A matching hash is not treated as the truth of the event.",
+      "A hash match is not authenticity and not the substance of a claim.",
+    ),
+    mustBeFalse(
+      "certificate-substance",
+      input.certificateEqualsSubstance,
+      "The clerk’s sentence is not treated as the substance.",
+      "Certificate wording does not prove that a finding is true.",
+    ),
+    mustBeFalse(
+      "ledger",
+      input.writesPublicLedger,
+      "The design does not write this public ledger.",
+      "Nothing sent here is written into the ledger.",
+    ),
+    mustBeFalse(
+      "contacts",
+      input.contactOnPublicPage,
+      "Contact lines stay off the public page.",
+      "Mail addresses and telephone numbers are not published here.",
+    ),
+    {
+      id: "bytes",
+      pass: flag(input.storesBytes) === false,
+      severity: flag(input.storesBytes) === true ? "hold" : "block",
+      reason:
+        flag(input.storesBytes) === false
+          ? "This design does not store the file. Neither does this page."
+          : flag(input.storesBytes) === true
+            ? "This design stores bytes. A private vault may do that. Those bytes are not a source line here."
+            : "Say whether the design stores bytes.",
+    },
+    {
+      id: "recompute",
+      pass: flag(input.recomputesHash) === true,
+      severity: flag(input.recomputesHash) === false ? "hold" : "block",
+      reason:
+        flag(input.recomputesHash) === true
+          ? "They say a server recomputes the digest. This page has not, and a recompute is still not the substance."
+          : flag(input.recomputesHash) === false
+            ? "They do not recompute the digest. A declared hash is not integrity."
+            : "Say whether a server recomputes the digest.",
+    },
+  ];
+
+  const blocked = document.some((check) => !check.pass && check.severity === "block");
+  const held = document.some((check) => !check.pass);
+  const verdict = blocked ? "rejected" : held ? "held" : "qualified";
+  const summary =
+    verdict === "qualified"
+      ? "The design matches this door. It is not adopted as a source, and nothing is lodged."
+      : verdict === "held"
+        ? "The design does not claim publication, uploader certification, or a ledger write. It is not a source line on this page. Nothing is lodged."
+        : "The design asks this page to publish, to certify from an uploader, or to treat a hash or a certificate as the substance. Refused. Nothing is lodged.";
+
+  return {
+    protocol: PROTOCOL,
+    lodged: false,
+    verifiesBytes: false,
+    verdict,
+    summary,
+    document,
+    claims: [],
+    next:
+      verdict === "rejected"
+        ? "Change the design so it does not publish, certify from an uploader, or equate a hash or a certificate with the substance."
+        : "A court-certified PDF still arrives as a document packet: title, docket, sha256, file stamp, certificate sentence, and claims with a pin and a quote. Do not send the file. Do not send a mail address.",
+  };
+}
+
+export const step1Reading: ArchitecturePacket = {
+  agent: "grok",
+  kind: "architecture",
+  name: "Private stack, Step 1, as read by Grok",
+  storesBytes: true,
+  publicRelease: false,
+  uploaderCanCertify: false,
+  hashEqualsTruth: false,
+  certificateEqualsSubstance: false,
+  writesPublicLedger: false,
+  recomputesHash: true,
+  contactOnPublicPage: false,
+};
+
 export const qualifyExample: IncomingPacket = {
   agent: "example-agent",
   caseId: "1RC191003776",
@@ -205,7 +356,9 @@ export function protocolDocument() {
       "Each claim needs a pin with a docket and a page, and a quote.",
       "No mail addresses and no telephone numbers.",
       "A qualified packet is not written into the ledger.",
+      "An architecture packet sets kind to architecture. It is scored against this door and not lodged. A private vault that stores bytes is held, not adopted.",
     ],
     example: qualifyExample,
+    architectureExample: step1Reading,
   };
 }
